@@ -1,0 +1,36 @@
+# block-shadow-read.yaml
+#
+# Detect — and kill — any process that touches /etc/shadow, regardless of which
+# syscall it uses to get there. Hooks security_file_permission, an LSM function
+# the kernel calls on file access no matter the entry point (open, openat,
+# memory-mapped reads), which makes it a more robust match point than hooking
+# individual syscalls one by one.
+#
+# matchArgs filters to paths prefixed with /etc/shadow; matchActions sends
+# SIGKILL to the offending process BEFORE the read completes. This runs in the
+# kernel, on every node, with no application changes and no proxy. It is
+# enforcement, not an alert that fires after the fact.
+#
+# Roll it out in audit first (see audit-network-egress.yaml for the pattern):
+# watch getevents until you trust the match, THEN enable the Sigkill action.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "block-shadow-read"
+spec:
+  kprobes:
+  - call: "security_file_permission"
+    syscall: false
+    args:
+    - index: 0
+      type: "file"
+    - index: 1
+      type: "int"
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: "Prefix"
+        values:
+        - "/etc/shadow"
+      matchActions:
+      - action: Sigkill

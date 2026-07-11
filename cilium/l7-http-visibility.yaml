@@ -1,0 +1,32 @@
+# l7-http-visibility.yaml
+#
+# Identity-aware L7 policy: let the "frontend" identity reach ONLY specific HTTP
+# methods and paths on "backend", enforced by workload identity rather than IP.
+# Anything else on the port (a stray DELETE, an unexpected path) is dropped.
+#
+# Cilium enforces L7 through its per-node proxy, not a per-pod sidecar — so you
+# get method/path policy without injecting a proxy into every pod. Requires the
+# port to also be permitted at L3/L4 (see l3l4-default-deny.yaml).
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "backend-l7-http"
+  namespace: demo
+spec:
+  endpointSelector:
+    matchLabels:
+      app: backend
+  ingress:
+  - fromEndpoints:
+    - matchLabels:
+        app: frontend
+    toPorts:
+    - ports:
+      - port: "8080"
+        protocol: TCP
+      rules:
+        http:
+        - method: "GET"
+          path: "/api/v1/.*"
+        - method: "POST"
+          path: "/api/v1/orders"

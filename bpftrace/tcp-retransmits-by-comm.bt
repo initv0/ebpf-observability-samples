@@ -1,0 +1,19 @@
+#!/usr/bin/env bpftrace
+/*
+ * tcp-retransmits-by-comm.bt
+ *
+ * Count TCP retransmissions per process command, printed every 10 seconds.
+ * During an incident this is the fastest way to answer "which service is
+ * actually seeing retransmits right now" — no log shipping, no dashboards,
+ * no sidecar to inspect, and nothing deployed to the application.
+ *
+ * Attaches a kprobe to tcp_retransmit_skb (the kernel function invoked on
+ * every TCP retransmission) and aggregates a count per process name (comm)
+ * in a BPF map, in-kernel, before anything crosses into userspace.
+ *
+ *   Usage: sudo bpftrace bpftrace/tcp-retransmits-by-comm.bt
+ */
+
+kprobe:tcp_retransmit_skb { @retransmits[comm] = count(); }
+
+interval:s:10 { print(@retransmits); clear(@retransmits); }

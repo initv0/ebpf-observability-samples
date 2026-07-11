@@ -1,0 +1,31 @@
+#!/usr/bin/env bpftrace
+/*
+ * runqueue-latency.bt
+ *
+ * Run-queue latency: how long a task sat runnable before the scheduler gave
+ * it a CPU. This is the signal that separates "the network is slow" from "the
+ * box is oversubscribed" — high run-queue latency means the CPU, not the wire,
+ * is where requests are waiting.
+ *
+ * Records an enqueue timestamp on wakeup, then on context switch measures the
+ * delta for the task about to run and buckets it into a log2 histogram (usecs).
+ *
+ *   Usage: sudo bpftrace bpftrace/runqueue-latency.bt   (Ctrl-C to print)
+ */
+
+tracepoint:sched:sched_wakeup,
+tracepoint:sched:sched_wakeup_new
+{
+    @qtime[args->pid] = nsecs;
+}
+
+tracepoint:sched:sched_switch
+{
+    $ns = @qtime[args->next_pid];
+    if ($ns) {
+        @usecs = hist((nsecs - $ns) / 1000);
+        delete(@qtime[args->next_pid]);
+    }
+}
+
+END { clear(@qtime); }

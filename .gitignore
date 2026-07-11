@@ -1,0 +1,10 @@
+# Compiled BPF objects / build output
+*.o
+*.ll
+vmlinux.h
+/build/
+
+# Logs / editor / OS cruft
+*.log
+.DS_Store
+*.swp

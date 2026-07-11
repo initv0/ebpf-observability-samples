@@ -1,0 +1,30 @@
+# audit-network-egress.yaml
+#
+# Observe-only companion to block-shadow-read.yaml. Records outbound TCP
+# connections (tcp_connect) with full process context — command, args, pod —
+# and takes NO enforcement action. This is where every runtime-security rollout
+# should start: watch what a policy would match for a few days before you ever
+# switch an action to Sigkill.
+#
+# View matches with:
+#   kubectl exec -it -n kube-system ds/tetragon -- tetra getevents -o compact
+#
+# tcp_connect(struct sock *sk) — arg 0 is the socket; Tetragon resolves the
+# destination address/port and the initiating process from it.
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "audit-network-egress"
+spec:
+  kprobes:
+  - call: "tcp_connect"
+    syscall: false
+    args:
+    - index: 0
+      type: "sock"
+    selectors:
+    # Report every connect. Narrow with matchArgs (e.g. DPort / DAddr) once you
+    # know which egress you actually care about; keep matchActions at Post so
+    # this stays audit-only and kills nothing.
+    - matchActions:
+      - action: Post

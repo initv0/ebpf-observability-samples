@@ -1,0 +1,53 @@
+# l3l4-default-deny.yaml
+#
+# The baseline every Zero Trust east-west story starts from: flip a namespace to
+# default-deny, then allow only what's declared — by workload identity (labels),
+# not by IP. Two documents:
+#   1) default-deny both directions for every pod in namespace "demo"
+#   2) allow "frontend" to reach "backend" on 8080 and cluster DNS, nothing else
+#
+# enableDefaultDeny requires Cilium 1.14+. On older Cilium, achieve the same by
+# applying any policy that selects the endpoint (its mere presence switches that
+# endpoint to default-deny for the covered direction).
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "default-deny"
+  namespace: demo
+spec:
+  endpointSelector: {}          # every pod in the namespace
+  enableDefaultDeny:
+    ingress: true
+    egress: true
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: "frontend-egress-allow"
+  namespace: demo
+spec:
+  endpointSelector:
+    matchLabels:
+      app: frontend
+  egress:
+  # Allow frontend -> backend on TCP/8080, by identity.
+  - toEndpoints:
+    - matchLabels:
+        app: backend
+    toPorts:
+    - ports:
+      - port: "8080"
+        protocol: TCP
+  # Allow cluster DNS (with L7 DNS visibility so Hubble can log the queries).
+  - toEndpoints:
+    - matchLabels:
+        k8s:io.kubernetes.pod.namespace: kube-system
+        k8s-app: kube-dns
+    toPorts:
+    - ports:
+      - port: "53"
+        protocol: UDP
+      rules:
+        dns:
+        - matchPattern: "*"
