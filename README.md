@@ -106,7 +106,7 @@ own the verifier debugging for.
 
 - Article: [eBPF in Production](https://vkafed.com/ebpf-in-production-kernel-level-observability-and-security/)
 - Decision guide: [Service Mesh vs eBPF-Native Data Planes](https://vkafed.com/service-mesh-vs-ebpf-native-data-planes-how-to-choose/)
-- More: [vkafed.com/category/cloud-platform-networking](https://vkafed.com/category/cloud-platform-networking/)
+- More: [vkafed.com/topics](https://vkafed.com/topics/)
 
 ## License
 
